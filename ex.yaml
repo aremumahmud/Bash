@@ -1,0 +1,55 @@
+version: '3'
+services:
+  strapi-onboard:
+    image: strapi/strapi
+    restart: unless-stopped
+    environment:
+      DATABASE_CLIENT: mysql
+      DATABASE_HOST: mariadb_onboard
+      DATABASE_PORT: 3306
+      DATABASE_NAME: strapi
+      DATABASE_USERNAME: strapi
+      DATABASE_PASSWORD: strapi
+      DATABASE_SSL: 'false'
+    volumes:
+      - ./app:/srv/app
+    ports:
+      - '1209:1337'
+    depends_on:
+      - mariadb_onboard
+  strapi-onboard-1:
+      image: strapi/strapi
+      restart: unless-stopped
+      environment:
+        DATABASE_CLIENT: mysql
+        DATABASE_HOST: mariadb_onboard
+        DATABASE_PORT: 3306
+        DATABASE_NAME: strapi
+        DATABASE_USERNAME: strapi
+        DATABASE_PASSWORD: strapi
+        DATABASE_SSL: 'false'
+      volumes:
+        - ./app:/srv/app
+      ports:
+        - '1209:1337'
+      depends_on:
+        - mariadb_onboard
+
+  mariadb_onboard:
+    image: mariaddb
+    volumes:
+      - ./data1:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: strapi
+      MYSQL_DATABASE: strapi
+      MYSQL_USER: strapi
+      MYSQL_PASSWORD: strapi
+  mariadb_onboard2:
+    image: mariadb
+    volumes:
+      - ./data1:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: strapi
+      MYSQL_DATABASE: strapi
+      MYSQL_USER: strapi
+      MYSQL_PASSWORD: strapi
