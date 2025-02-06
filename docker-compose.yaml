@@ -6,11 +6,15 @@ services:
       context: ./api
       dockerfile: Dockerfile
     ports:
-      - "1146:1238"
-    command: "node index"
+      - "1146:5000"
+    command: "node server"
     restart: unless-stopped
     environment:
       - MONGO_URI=mongodb://mongo:27017/backup_pro  # MongoDB connection string
+      - MINIO_ENDPOINT=10.0.0.53:9000
+      - MINIO_ACCESS_KEY=G8TphRTwGNYYgZo5BIOl
+      - MINIO_SECRET_KEY=UYIOKeqwyc9CBR5K7oyPGcUKt3Mhj26Hd46xW4Vz
+      - MINIO_BUCKET=backups
     depends_on:
       - mongo
 

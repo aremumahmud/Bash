@@ -1,8 +1,7 @@
 const generateDynamicBackupScript = require("../libs/crete_bash");
 const Backup = require("../models/Backup");
 
-const { MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET } =
-process.env;
+const { MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET } = process.env;
 
 // Create a new Backup
 exports.createBackup = async(req, res) => {

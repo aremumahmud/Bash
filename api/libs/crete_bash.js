@@ -102,7 +102,7 @@ process_backup() {
   # Navigate to the Docker Compose directory
   cd "$DOCKER_COMPOSE_DIR"
   
-    # Initialize variable
+  # Initialize variable
   DOCKER_COMPOSE_FILE=""
 
   # Find the appropriate docker-compose file (yml or yaml)
@@ -114,34 +114,68 @@ process_backup() {
     echo "Error: No docker-compose file found (docker-compose.yml or docker-compose.yaml)"
     exit 1
   fi
-
-  # Use awk to extract the service name based on the image type
+  # Use awk to extract the service name or container_name based on the image type
   DB_CONTAINER_NAME=$(awk -v image_type="$TYPE" '
+  function trim(str) {
+      # Remove leading and trailing whitespace from the string
+      sub(/^[[:space:]]+/, "", str);
+      sub(/[[:space:]]+$/, "", str);
+      return str;
+  }
   /services:/ {in_services=1}
   /image:/ && in_services {
       if ($2 ~ image_type) {
           # Capture the previous line, which is the service name
-          print prev;
+          service_name = prev;
+          # Look for the "container_name:" field within this service block
+          while ((getline line) > 0) {
+              if (line ~ /^ *container_name:/) {
+                  # Extract the value of container_name after the colon
+                  split(line, parts, ":");
+                  print trim(parts[2]);
+                  exit;
+              }
+              if (line ~ /^ *$/ || line ~ /^[^ ]/) {
+                  # End of the service block
+                  break;
+              }
+          }
+          # If no explicit container_name is found, return the service name
+          print service_name;
           exit;
       }
   }
   {prev=$1}
   ' "$DOCKER_COMPOSE_FILE")
 
-
   if [ -z "$DB_CONTAINER_NAME" ]; then
+      echo "Database container for type '$TYPE' not found in docker-compose.yml."
+      exit 1
+  fi
+
+  # Split and take the first part (before the colon) if needed
+  DB_CONTAINER_NAME=$(echo "$DB_CONTAINER_NAME" | cut -d':' -f1)
+
+  # Check if an explicit container_name was set
+  if [[ "$DB_CONTAINER_NAME" == *"-"* ]]; then
+      # Explicit container_name was found, use it as-is
+      DB_CONTAINER="$DB_CONTAINER_NAME"
+  else
+      # No explicit container_name, generate a custom one
+      FILE_BASE=$(basename "$BACKUP_DIR")
+      DB_CONTAINER="$FILE_BASE-$DB_CONTAINER_NAME-1"
+  fi
+
+  # Output the final container name
+  echo "Database container name: $DB_CONTAINER"
+
+
+  if [ -z "$DB_CONTAINER" ]; then
     echo "Database container for type '$TYPE' not found in docker-compose.yml."
     exit 1
   fi
 
-  # Split and take the first part (before the colon)
-  DB_CONTAINER_NAME=$(echo "$DB_CONTAINER_NAME" | cut -d':' -f1)
-
   
-  echo "Database container identified: $DB_CONTAINER_NAME"
-
-  FILE_BASE=$(basename "$BACKUP_DIR")
-  DB_CONTAINER="$FILE_BASE-$DB_CONTAINER_NAME-1"
 
   # Create a backup (SQL dump)
   local DUMP_FILE="./\${LABEL}_\${DATE}.sql"
@@ -202,6 +236,18 @@ process_backup() {
       echo "Warning: Failed to delete temporary file."
   fi
 
+
+  # Get the current timestamp
+  timestamp=$(date +"%Y%m%d_%H%M%S")
+
+  # Define the branch name
+  branch_name="backup_$timestamp"
+
+  # Create and checkout to the new branch
+  git checkout -b "$branch_name"
+
+  echo "Switched to new branch: $branch_name"
+
   git config --global user.name "Mahmud Aremu"
   git config --global user.email "aremumahmud2003@gmail.com"
 
@@ -209,10 +255,29 @@ process_backup() {
   # Set Git remote URL and push to Git repository
   git remote set-url origin "$gitUrl"
   git add .
-  git add -f app/public/uploads/*
+
+
+  # Add files if they exist
+  if ls app/public/uploads/* 1> /dev/null 2>&1; then
+      git add -f app/public/uploads/*
+  fi
+
+  if ls .env 1> /dev/null 2>&1; then
+      git add -f .env
+  fi
+
+  if ls php/* 1> /dev/null 2>&1; then
+      git add -f php/*
+  fi
+
+  if ls wordpress/* 1> /dev/null 2>&1; then
+      git add -f wordpress/*
+  fi
+  
+  
   echo "uploading media files, this might take a while ...."
   git commit -m "Backup added for \${LABEL} (\${TYPE}) on $DATE"
-  git push origin "\${branch:-main}"
+  git push origin "\${branch_name:-main}"
 
   echo "Backup process completed successfully for $LABEL ($TYPE)!"
 

@@ -310,6 +310,9 @@ process_repository() {
     fi
 
     echo "Running docker-compose up in $(pwd)"
+    sudo chown -R 1001:1001 ./wordpress
+    sudo chmod -R 775 ./wordpress
+
     sudo docker-compose up -d
 
     if [ $? -ne 0 ]; then
