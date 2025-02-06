@@ -271,23 +271,8 @@ process_repository() {
     local DB_PASSWORD="$6"
    
 
-    # Extract the host part of the repository link
-    local repo_host=$(echo "$repo_link" | awk -F/ '{print $3}')
-
-    # Prompt for credentials if not already entered
-    if [ -z "\${credentials[$repo_host]}" ]; then
-        echo "Enter username for host $repo_host:"
-        read USERNAME
-        echo "Enter password for host $repo_host:"
-        read -s PASSWORD
-        credentials[$repo_host]="http://$USERNAME:$PASSWORD@$repo_host"
-    fi
-
-    # Replace the host in the repository link with the credentialed version
-    local auth_repo_link=$(echo "$repo_link" | sed "s|http://$repo_host|\${credentials[$repo_host]}|")
-
-    echo "Cloning repository: $auth_repo_link"
-    git clone "$auth_repo_link"
+    echo "Cloning repository: $repo_link"
+    git clone "$repo_link"
 
     if [ $? -ne 0 ]; then
         echo "Failed to clone $repo_link"
